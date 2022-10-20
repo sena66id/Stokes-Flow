@@ -13,6 +13,7 @@ void calcInverseMatrix_2x2(double (&inv_a)[2][2],const double (&a)[2][2]);
 
 using namespace Eigen;
 using namespace std;
+typedef Triplet<double> T;
 void export_vtu(const std::string &file, vector<vector<double>> node, vector<vector<int>> element, vector<double> C)
 {
     FILE *fp;
@@ -95,10 +96,8 @@ void export_vtu(const std::string &file, vector<vector<double>> node, vector<vec
   fclose(fp);
 }
 
-
 int main()
 {
-    
     string str;
     ifstream ifs("node.dat");
     //vector<double> t(2) は double t[2]と同じ
@@ -130,6 +129,7 @@ int main()
     }
     ifs.close();
     
+    
     vector<double> C1(x.size(),0.0);
     double minimum = 100000.0;
     for(int i=0; i<x.size(); i++){
@@ -157,7 +157,39 @@ int main()
         }
     }
     ofs2.close();
-    //export_vtu("test.vtu", x, element, C1);
+
+    vector<double> C3(x.size(),0.0);
+    double minimum2 = 100000.0;
+    for(int i=0; i<x.size(); i++){
+        minimum2=min(minimum2,x[i][1]);
+    }
+    ofstream ofs3("boundary_bottom.dat");
+    for(int i=0; i<x.size(); i++){
+        if(fabs(x[i][1]-minimum2)<0.000001){
+            ofs3 << i << endl;
+            C3[i] = 1.0;
+        }
+    }
+    ofs3.close();
+
+    vector<double> C4(x.size(),0.0);
+    double maximum2 = 0.001;
+    for(int i=0; i<x.size(); i++){
+        maximum2=max(maximum2,x[i][1]);
+    }
+    ofstream ofs4("boundary_upper.dat");
+    for(int i=0; i<x.size(); i++){
+        if(fabs(x[i][1]-maximum2)<0.000001){
+            ofs4 << i << endl;
+            C4[i] = 1.0;
+        }
+    }
+    ofs4.close();
+
+
+
+    
+   
 
     ifs.open("boundary_left.dat");
     vector<int> boundary_left;
@@ -179,12 +211,35 @@ int main()
     }
     ifs.close();
 
+    ifs.open("boundary_bottom.dat");
+    vector<int> boundary_bottom;
+    while(getline(ifs,str)){
+        istringstream ss(str);
+        string tmp;
+        getline(ss, tmp, ' ');
+        boundary_bottom.push_back(stoi(tmp));
+    }
+    ifs.close();
+
+    ifs.open("boundary_upper.dat");
+    vector<int> boundary_upper;
+    while(getline(ifs,str)){
+        istringstream ss(str);
+        string tmp;
+        getline(ss, tmp, ' ');
+        boundary_upper.push_back(stoi(tmp));
+    }
+    ifs.close();
+
+
+
 
     MatrixXd K(x.size()*3, x.size()*3);
     VectorXd U(x.size()*3);
     VectorXd R(x.size()*3);
     U = VectorXd::Zero(x.size()*3);
     R = VectorXd::Zero(x.size()*3);
+
 
 
     for(int i=0; i<x.size()*3; i++){
@@ -202,23 +257,28 @@ int main()
 
     double dxdr[2][2];
 
-   
+    for(int i=0; i<2; i++){
+           for(int j=0; j<2; j++){
+            dxdr[i][j]=0.0;
+           }
+    }
 
+   
+    
     for(int ic=0; ic<element.size(); ic++){
+        
+     
       for(int i=0; i<2; i++){
         for(int j=0; j<2; j++){
-          dxdr[i][j]=0.0;
           for(int k=0; k<3; k++){
             dxdr[i][j] += dNdr[i][k]*x[element[ic][k]][j];
           }
         }
       }
+
       double inv_dxdr[2][2];
 
-       
-     
-
-      calcInverseMatrix_2x2(inv_dxdr,dxdr);
+     calcInverseMatrix_2x2(inv_dxdr,dxdr);
 
      double dndx[2][3];
 
@@ -231,7 +291,7 @@ int main()
                 }
             }
     }
-    
+
     double Ke1[3][3];
     double r1[3][2];
     double r2[2][3];
@@ -252,7 +312,7 @@ int main()
     for(int i=0;i<3;i++){
             for(int j=0;j<3;j++){
                 for(int k=0;k<2;k++){
-                    Ke1[i][j]+=r1[i][k]*r2[k][j];
+                    Ke1[i][j]+=r1[i][k]*r2[k][j]*0.0013;
                 }
             }
     }
@@ -305,8 +365,8 @@ int main()
 
 
 
-    MatrixXd Ke(9, 9);
-    Ke = VectorXd::Zero(9,9);
+    MatrixXd Ke(9,9);
+    Ke = MatrixXd::Zero(9,9);
 
     for(int i=0;i<3;i++){
         for(int j=0;j<3;j++){
@@ -339,15 +399,150 @@ int main()
         }
     }
 
-    cout<<Ke<<endl;
+    for(int i=0;i<3;i++){
+        for(int j=0;j<3;j++){
+            K(element[ic][i],element[ic][j]) += Ke(i,j);
+        }
 
+     }
+     for(int i=0;i<3;i++){
+        for(int j=3;j<6;j++){
+            K(element[ic][i],element[ic][j-3]+x.size()) += Ke(i,j);
+        }
+    }
+     for(int i=0;i<3;i++){
+        for(int j=6;j<9;j++){
+            K(element[ic][i],element[ic][j-6]+2*x.size()) += Ke(i,j);
+        }
+    }
+     for(int i=3;i<6;i++){
+        for(int j=0;j<3;j++){
+            K(element[ic][i-3]+x.size(),element[ic][j])+= Ke(i,j);
+        }
 
+     }
+     for(int i=3;i<6;i++){
+        for(int j=3;j<6;j++){
+            K(element[ic][i-3]+x.size(),element[ic][j-3]+x.size()) += Ke(i,j);
+        }
+    }
+     for(int i=3;i<6;i++){
+        for(int j=6;j<9;j++){
+            K(element[ic][i-3]+x.size(),element[ic][j-6]+2*x.size()) +=Ke(i,j);
+        }
+    }
+    for(int i=6;i<9;i++){
+        for(int j=0;j<3;j++){
+            K(element[ic][i-6]+2*x.size(),element[ic][j]) += Ke(i,j);
+        }
+
+     }
+     for(int i=6;i<9;i++){
+        for(int j=3;j<6;j++){
+            K(element[ic][i-6]+2*x.size(),element[ic][j-3]+x.size()) += Ke(i,j);
+        }
+    }
+     for(int i=6;i<9;i++){
+        for(int j=6;j<9;j++){
+            K(element[ic][i-6]+2*x.size(),element[ic][j-6]+2*x.size()) +=Ke(i,j);
+        }
+    }
+    
+    
     }
 
-return 0;
+     for(int i=0; i<boundary_left.size(); i++){
+      for(int j=0; j<x.size()*3; j++){
+        K(boundary_left[i],j) = 0;
+      }
+     }
+
+    for(int i=0; i<boundary_right.size(); i++){
+      for(int j=0; j<x.size()*3; j++){
+        K(boundary_right[i]+2*x.size(),j) = 0;
+      }
+    }
+    for(int i=0; i<boundary_bottom.size(); i++){
+      for(int j=0; j<x.size()*3; j++){
+        K(boundary_bottom[i],j) = 0;
+        K(boundary_bottom[i]+x.size(),j) = 0;
+      }
+    }
+
+    for(int i=0; i<boundary_upper.size(); i++){
+      for(int j=0; j<x.size()*3; j++){
+        K(boundary_upper[i],j) = 0;
+        K(boundary_upper[i]+x.size(),j) = 0;
+      }
+    }
+
+    for(int i=0; i<boundary_left.size(); i++){
+        K(boundary_left[i],boundary_left[i]) = 1.0;
+      }
+
+      for(int i=0; i<boundary_right.size(); i++){
+        K(boundary_right[i]+2*x.size(),boundary_right[i]+2*x.size()) = 1.0;
+      }
+
+      for(int i=0; i<boundary_bottom.size(); i++){
+        K(boundary_bottom[i],boundary_bottom[i]) = 1.0;
+        K(boundary_bottom[i]+x.size(),boundary_bottom[i]+x.size()) = 1.0;
+      }
+
+       for(int i=0; i<boundary_upper.size(); i++){
+        K(boundary_upper[i],boundary_upper[i]) = 1.0;
+        K(boundary_upper[i]+x.size(),boundary_upper[i]+x.size()) = 1.0;
+      }
+
+
+    for(int i=0; i<boundary_right.size(); i++){
+        R(boundary_left[i]) = 1;
+        R(boundary_right[i]+2*x.size()) = 1.0;
+     }
+
+     SparseMatrix<double> K_sparse(x.size()*3, x.size()*3);
+      vector<T> tripletList;
+      for (int i=0;i<x.size()*3 ;i++){
+        for(int j=0;j<x.size()*3 ;j++){
+          if(K(i,j)!=0){
+            tripletList.push_back(T(i,j,K(i,j)));
+          }
+
+        }
+      }
+      K_sparse.setFromTriplets(tripletList.begin(),tripletList.end());
+
+     SparseLU<SparseMatrix<double>, COLAMDOrdering<int>> solver;
+    solver.compute(K_sparse);
+    if(solver.info()!=Success) {
+    // decomposition failed
+    cout << "decomposition failed" << endl;
+    return -1;
+    }
+    U = solver.solve(R);
+    if(solver.info()!=Success) {
+    // solving failed
+    std::cout << "solving failed" << endl;
+    return -1;
+    }
+    ofstream outputfile("U.dat");
+    outputfile << U;
+    outputfile.close();
+
+
+
+
+      
+
+    
 
 
 }
+
+
+
+
+
 
 
 double calcDeterminant_2x2( const double (&a)[2][2])
