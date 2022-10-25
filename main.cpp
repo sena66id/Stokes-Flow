@@ -96,6 +96,7 @@ void export_vtu(const std::string &file, vector<vector<double>> node, vector<vec
   fclose(fp);
 }
 
+   
 int main()
 {
     string str;
@@ -231,22 +232,22 @@ int main()
     }
     ifs.close();
 
+    
 
-
-
-    MatrixXd K(x.size()*3, x.size()*3);
+    MatrixXd K(x.size()*3,x.size()*3);
+    MatrixXd Ke(9,9);
+    MatrixXd Ke6(3,3);
     VectorXd U(x.size()*3);
     VectorXd R(x.size()*3);
-    U = VectorXd::Zero(x.size()*3);
+    U= VectorXd::Zero(x.size()*3);
+    K = MatrixXd::Zero(x.size()*3,x.size()*3);
     R = VectorXd::Zero(x.size()*3);
 
+    
+    
 
 
-    for(int i=0; i<x.size()*3; i++){
-      for(int j=0; j<x.size()*3; j++){
-        K(i,j) = 0;
-      }
-    }
+
 
     
 
@@ -257,12 +258,6 @@ int main()
 
     double dxdr[2][2];
 
-    for(int i=0; i<2; i++){
-           for(int j=0; j<2; j++){
-            dxdr[i][j]=0.0;
-           }
-    }
-
    
     
     for(int ic=0; ic<element.size(); ic++){
@@ -270,237 +265,294 @@ int main()
      
       for(int i=0; i<2; i++){
         for(int j=0; j<2; j++){
+        dxdr[i][j]=0.0;
           for(int k=0; k<3; k++){
             dxdr[i][j] += dNdr[i][k]*x[element[ic][k]][j];
           }
         }
       }
 
+      
+
+
       double inv_dxdr[2][2];
+      double det;
+
+
+      det = calcDeterminant_2x2(dxdr);
+
+     
 
      calcInverseMatrix_2x2(inv_dxdr,dxdr);
 
+      
+      
+        
+      
      double dndx[2][3];
 
+     /*for(int i=0; i<2; i++){
+        for(int j=0; j<2; j++){
+            cout<<dxdr[i][j]<< " " ;
+        }
+     }
+     cout << endl;*/
+
+    
+      //cout<<det<<endl;
    
 
      for(int i=0;i<2;i++){
             for(int j=0;j<3;j++){
+                dndx[i][j]=0;
                 for(int k=0;k<2;k++){
                     dndx[i][j]+=inv_dxdr[i][k]*dNdr[k][j];
                 }
             }
-    }
-
-    double Ke1[3][3];
-    double r1[3][2];
-    double r2[2][3];
-
-    for(int i=0;i<3;i++){
-        r1[i][0]=dndx[0][i];
-    }
-    for(int i=0;i<3;i++){
-        r1[i][1]=dndx[1][i];
-    }
-    for(int i=0;i<3;i++){
-        r2[0][i]=dndx[0][i];
-    }
-     for(int i=0;i<3;i++){
-        r1[1][i]=dndx[1][i];
-    }
-
-    for(int i=0;i<3;i++){
-            for(int j=0;j<3;j++){
-                for(int k=0;k<2;k++){
-                    Ke1[i][j]+=r1[i][k]*r2[k][j]*0.0013;
-                }
-            }
-    }
-
-    double Ke2[3][3];
-    double r3[3][1];
-    double r4[1][3];
-    for(int i=0;i<3;i++){
-        r3[i][0]=dndx[0][i];
-    }
-    for(int i=0;i<3;i++){
-        r4[0][i]=0.333;
-    }
-
-    for(int i=0;i<3;i++){
-            for(int j=0;j<3;j++){
-                for(int k=0;k<1;k++){
-                    Ke2[i][j]+=r3[i][k]*r4[k][j];
-                }
-            }
-    }
-
-    double Ke3[3][3];
-    double r5[3][1];
-    double r6[1][3];
-    for(int i=0;i<3;i++){
-        r5[i][0]=dndx[1][i];
-    }
-    for(int i=0;i<3;i++){
-        r6[0][i]=0.333;
-    }
-
-    for(int i=0;i<3;i++){
-            for(int j=0;j<3;j++){
-                for(int k=0;k<1;k++){
-                    Ke3[i][j]+=r5[i][k]*r6[k][j];
-                }
-            }
-    }
-
-    double Ke4[3][3];
-    double Ke5[3][3];
-
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            Ke4[i][j]=Ke2[j][i];
-            Ke5[i][j]=Ke3[j][i];
-        }
-    }
-
-
-
-    MatrixXd Ke(9,9);
-    Ke = MatrixXd::Zero(9,9);
-
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            Ke(i,j)+=Ke1[i][j];
-        }
-    }
-     for(int i=0;i<3;i++){
-        for(int j=6;j<9;j++){
-            Ke(i,j)+=Ke2[i][j-6];
-        }
-    }
-     for(int i=3;i<6;i++){
-        for(int j=3;j<6;j++){
-            Ke(i,j)+=Ke1[i-3][j-3];
-        }
-    }
-     for(int i=3;i<6;i++){
-        for(int j=6;j<9;j++){
-            Ke(i,j)+=Ke3[i-3][j-6];
-        }
-    }
-     for(int i=6;i<9;i++){
-        for(int j=0;j<3;j++){
-            Ke(i,j)+=Ke4[i-6][j];
-        }
-    }
-     for(int i=6;i<9;i++){
-        for(int j=3;j<6;j++){
-            Ke(i,j)+=Ke5[i-6][j-3];
-        }
-    }
-
-    for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-            K(element[ic][i],element[ic][j]) += Ke(i,j);
-        }
-
      }
-     for(int i=0;i<3;i++){
-        for(int j=3;j<6;j++){
-            K(element[ic][i],element[ic][j-3]+x.size()) += Ke(i,j);
-        }
-    }
-     for(int i=0;i<3;i++){
-        for(int j=6;j<9;j++){
-            K(element[ic][i],element[ic][j-6]+2*x.size()) += Ke(i,j);
-        }
-    }
-     for(int i=3;i<6;i++){
-        for(int j=0;j<3;j++){
-            K(element[ic][i-3]+x.size(),element[ic][j])+= Ke(i,j);
-        }
-
-     }
-     for(int i=3;i<6;i++){
-        for(int j=3;j<6;j++){
-            K(element[ic][i-3]+x.size(),element[ic][j-3]+x.size()) += Ke(i,j);
-        }
-    }
-     for(int i=3;i<6;i++){
-        for(int j=6;j<9;j++){
-            K(element[ic][i-3]+x.size(),element[ic][j-6]+2*x.size()) +=Ke(i,j);
-        }
-    }
-    for(int i=6;i<9;i++){
-        for(int j=0;j<3;j++){
-            K(element[ic][i-6]+2*x.size(),element[ic][j]) += Ke(i,j);
-        }
-
-     }
-     for(int i=6;i<9;i++){
-        for(int j=3;j<6;j++){
-            K(element[ic][i-6]+2*x.size(),element[ic][j-3]+x.size()) += Ke(i,j);
-        }
-    }
-     for(int i=6;i<9;i++){
-        for(int j=6;j<9;j++){
-            K(element[ic][i-6]+2*x.size(),element[ic][j-6]+2*x.size()) +=Ke(i,j);
-        }
-    }
     
+     
+
+        double Ke1[3][3];
+        double r1[3][2];
+        double r2[2][3];
+
+        for(int i=0;i<3;i++){
+            r1[i][0]=dndx[0][i];
+        }
+        for(int i=0;i<3;i++){
+            r1[i][1]=dndx[1][i];
+        }
+        for(int i=0;i<3;i++){
+            r2[0][i]=dndx[0][i];
+        }
+        for(int i=0;i<3;i++){
+            r2[1][i]=dndx[1][i];
+        }
+
+        for(int i=0;i<3;i++){
+                for(int j=0;j<3;j++){
+                    Ke1[i][j]=0.0;
+                    for(int k=0;k<2;k++){
+                        Ke1[i][j]-=r1[i][k]*r2[k][j]*0.0035*det*0.5;
+                    }
+                }
+        }
+
+        double Ke2[3][3];
+        double r3[3][1];
+        double r4[1][3];
+        for(int i=0;i<3;i++){
+            r3[i][0]=dndx[0][i];
+        }
+        for(int i=0;i<3;i++){
+            r4[0][i]=0.333;
+        }
+
+        for(int i=0;i<3;i++){
+                for(int j=0;j<3;j++){
+                    Ke2[i][j]=0.0;
+                    for(int k=0;k<1;k++){
+                        Ke2[i][j]+=r3[i][k]*r4[k][j]*det*0.5;
+                    }
+                }
+        }
+
+        double Ke3[3][3];
+        double r5[3][1];
+        double r6[1][3];
+        for(int i=0;i<3;i++){
+            r5[i][0]=dndx[1][i];
+        }
+        for(int i=0;i<3;i++){
+            r6[0][i]=0.333;
+        }
+
+        for(int i=0;i<3;i++){
+                for(int j=0;j<3;j++){
+                    Ke3[i][j]=0;
+                    for(int k=0;k<1;k++){
+                        Ke3[i][j]+=r5[i][k]*r6[k][j]*det*0.5;
+                    }
+                }
+        }
+
+        double Ke4[3][3];
+        double Ke5[3][3];
+
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+                Ke4[i][j]=Ke2[j][i];
+                Ke5[i][j]=Ke3[j][i];
+            }
+        }
+
+
+        
+
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+                Ke(i,j)=0.0;
+                Ke(i,j)+=Ke1[i][j];
+            }
+        }
+        for(int i=0;i<3;i++){
+            for(int j=6;j<9;j++){
+                 Ke(i,j)=0.0;
+                Ke(i,j)+=Ke2[i][j-6];
+            }
+        }
+        for(int i=3;i<6;i++){
+            for(int j=3;j<6;j++){
+                 Ke(i,j)=0.0;
+                Ke(i,j)+=Ke1[i-3][j-3];
+            }
+        }
+        for(int i=3;i<6;i++){
+            for(int j=6;j<9;j++){
+                 Ke(i,j)=0.0;
+                Ke(i,j)+=Ke3[i-3][j-6];
+            }
+        }
+        for(int i=6;i<9;i++){
+            for(int j=0;j<3;j++){
+                Ke(i,j)=0.0;
+                Ke(i,j)+=Ke4[i-6][j];
+            }
+        }
+        for(int i=6;i<9;i++){
+            for(int j=3;j<6;j++){
+                Ke(i,j)=0.0;
+                Ke(i,j)+=Ke5[i-6][j-3];
+            }
+        }
+
+      double dx = x[element[ic][0]][0] - x[element[ic][1]][0];
+      double dy = x[element[ic][0]][1] - x[element[ic][1]][1];
+      double h = sqrt(dx * dx + dy * dy);
+      double tau = h * h / (4e0 * 0.0035) / 3e0;
+      
+      
+      for (int p = 0; p <3; p++)
+      {
+        for (int q = 0; q < 3; q++)
+        {
+           Ke6(p,q)=0;
+          for (int i = 0; i < 2; i++)
+          {
+            Ke6(p, q) -= tau * dndx[p][i] * dndx[q][i] * det *0.5;
+          }
+          
+          Ke(p + 6, q + 6) += Ke6(p, q);
+        }
+      }
+       
+
+        
+
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+               
+                K(element[ic][i],element[ic][j]) += Ke(i,j);
+            }
+
+        }
+        for(int i=0;i<3;i++){
+            for(int j=3;j<6;j++){
+                
+                K(element[ic][i],element[ic][j-3]+x.size()) += Ke(i,j);
+            }
+        }
+        for(int i=0;i<3;i++){
+            for(int j=6;j<9;j++){
+             
+                K(element[ic][i],element[ic][j-6]+2*x.size()) += Ke(i,j);
+            }
+        }
+        for(int i=3;i<6;i++){
+            for(int j=0;j<3;j++){
+                 
+                K(element[ic][i-3]+x.size(),element[ic][j])+= Ke(i,j);
+            }
+
+        }
+        for(int i=3;i<6;i++){
+            for(int j=3;j<6;j++){
+                
+                K(element[ic][i-3]+x.size(),element[ic][j-3]+x.size()) += Ke(i,j);
+            }
+        }
+        for(int i=3;i<6;i++){
+            for(int j=6;j<9;j++){
+                
+                K(element[ic][i-3]+x.size(),element[ic][j-6]+2*x.size()) +=Ke(i,j);
+            }
+        }
+        for(int i=6;i<9;i++){
+            for(int j=0;j<3;j++){
+                
+                K(element[ic][i-6]+2*x.size(),element[ic][j]) += Ke(i,j);
+            }
+
+        }
+        for(int i=6;i<9;i++){
+            for(int j=3;j<6;j++){
+                 
+                K(element[ic][i-6]+2*x.size(),element[ic][j-3]+x.size()) += Ke(i,j);
+            }
+        }
+        for(int i=6;i<9;i++){
+            for(int j=6;j<9;j++){
+               
+                K(element[ic][i-6]+2*x.size(),element[ic][j-6]+2*x.size()) +=Ke(i,j);
+            }
+        }
+       
     
     }
 
-     for(int i=0; i<boundary_left.size(); i++){
+   for(int i=0; i<boundary_left.size(); i++){
       for(int j=0; j<x.size()*3; j++){
-        K(boundary_left[i],j) = 0;
+        K(boundary_left[i],j) = 0.0;
       }
      }
-
-    for(int i=0; i<boundary_right.size(); i++){
+    /*for(int i=0; i<boundary_right.size(); i++){
       for(int j=0; j<x.size()*3; j++){
         K(boundary_right[i]+2*x.size(),j) = 0;
       }
-    }
+    }*/
     for(int i=0; i<boundary_bottom.size(); i++){
       for(int j=0; j<x.size()*3; j++){
-        K(boundary_bottom[i],j) = 0;
-        K(boundary_bottom[i]+x.size(),j) = 0;
+        K(boundary_bottom[i],j) = 0.0;
+        K(boundary_bottom[i]+x.size(),j) = 0.0;
       }
     }
-
     for(int i=0; i<boundary_upper.size(); i++){
       for(int j=0; j<x.size()*3; j++){
-        K(boundary_upper[i],j) = 0;
-        K(boundary_upper[i]+x.size(),j) = 0;
+        K(boundary_upper[i],j) = 0.0;
+        K(boundary_upper[i]+x.size(),j) = 0.0;
       }
     }
-
     for(int i=0; i<boundary_left.size(); i++){
         K(boundary_left[i],boundary_left[i]) = 1.0;
       }
-
-      for(int i=0; i<boundary_right.size(); i++){
+     /* for(int i=0; i<boundary_right.size(); i++){
         K(boundary_right[i]+2*x.size(),boundary_right[i]+2*x.size()) = 1.0;
-      }
-
+      }*/
       for(int i=0; i<boundary_bottom.size(); i++){
         K(boundary_bottom[i],boundary_bottom[i]) = 1.0;
         K(boundary_bottom[i]+x.size(),boundary_bottom[i]+x.size()) = 1.0;
       }
-
        for(int i=0; i<boundary_upper.size(); i++){
         K(boundary_upper[i],boundary_upper[i]) = 1.0;
         K(boundary_upper[i]+x.size(),boundary_upper[i]+x.size()) = 1.0;
       }
-
-
     for(int i=0; i<boundary_right.size(); i++){
-        R(boundary_left[i]) = 1;
-        R(boundary_right[i]+2*x.size()) = 1.0;
+        R(boundary_left[i]) = 1.0;
+        
      }
 
-     SparseMatrix<double> K_sparse(x.size()*3, x.size()*3);
+    SparseMatrix<double> K_sparse(x.size()*3, x.size()*3);
       vector<T> tripletList;
       for (int i=0;i<x.size()*3 ;i++){
         for(int j=0;j<x.size()*3 ;j++){
@@ -529,6 +581,15 @@ int main()
     outputfile << U;
     outputfile.close();
 
+    vector<double> U1(x.size()*3);
+
+
+    for(int i=0; i<x.size(); i++){
+        U1[i]=U[i];
+    }
+
+    export_vtu("result.vtu", x, element, U1);
+
 
 
 
@@ -553,9 +614,9 @@ double calcDeterminant_2x2( const double (&a)[2][2])
 
 void calcInverseMatrix_2x2(double (&inv_a)[2][2],const double (&a)[2][2])
 {
-  double det;
+  double k;
 
-  det =1.0/ calcDeterminant_2x2(a);
+  k =1.0/ calcDeterminant_2x2(a);
 
   inv_a[0][0] = a[1][1];
   inv_a[0][1] = -1.0*a[0][1];
@@ -564,7 +625,7 @@ void calcInverseMatrix_2x2(double (&inv_a)[2][2],const double (&a)[2][2])
   
 
   for(int i=0;i<2;i++){
-    for(int j=0;j<2;j++) inv_a[i][j] = inv_a[i][j] / det;
+    for(int j=0;j<2;j++) inv_a[i][j] = inv_a[i][j] * k;
 }
 }
    // vector<vector<double>> K(
